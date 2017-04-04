@@ -6,8 +6,6 @@ import json
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 
-#export GOOGLE_APPLICATION_CREDENTIALS="C:/Users/Ben/Dropbox/Google/MeerkatReader-9fbf10d1e30c.json"
-
 API_DISCOVERY_FILE = 'video-intelligence-service-discovery-v1beta1.json'
 OPERATIONS_DISCOVERY_FILE = 'video-intelligence-operations-discovery.json'
 

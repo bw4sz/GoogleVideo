@@ -1,4 +1,5 @@
 import label
+import time
 
 class Video:
     def __init__(self,path):

@@ -46,6 +46,9 @@ def main(gcs_uri):
             print('Operation processing ...')
     print('The video has been successfully processed.')
     print('')
+    return(response)
+
+def label_parse(response):
     labelData = response['response']['annotationResults'][0]['labelAnnotations']
     print ('Video Annotations:')
     for label in labelData:
@@ -62,6 +65,9 @@ def main(gcs_uri):
                     startTime = segment.get('startTimeOffset', '0')
                     endTime = segment.get('endTimeOffset', '0')
                     print "  " + startTime + ", " + endTime
+    
+    
+
 
     
     

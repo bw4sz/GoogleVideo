@@ -7,5 +7,6 @@ class Video:
         self.path = path
     def label(self):
         labels=label.main(self.path)
+        label.label_parse(labels)
         
         

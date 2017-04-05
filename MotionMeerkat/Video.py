@@ -36,7 +36,10 @@ class Video:
         #vidcap.set(cv2.CAP_PROP_POS_MSEC,20000) 
         while True:
             ret, frame = cap.read()  
-            
+        
+            #check for end of video
+            if not ret:
+                break
             #get time, API returns in microseconds, opencv in milliseconds
             msec=cap.get(cv2.CAP_PROP_POS_MSEC)*1000
             print(msec)
@@ -70,7 +73,7 @@ class Video:
                 pcount=pcount+1
                 
             cv2.imshow('frame',frame)
-            if cv2.waitKey(25) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         
         cap.release()

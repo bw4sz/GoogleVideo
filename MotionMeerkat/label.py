@@ -66,7 +66,6 @@ def label_parse(response):
                     endTime = segment.get('endTimeOffset', '0')
                     print "  " + startTime + ", " + endTime
     
-    
 
 
     

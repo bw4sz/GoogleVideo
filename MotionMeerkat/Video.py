@@ -34,7 +34,7 @@ class Video:
         cap = cv2.VideoCapture(self.local_file)
         
         #vidcap.set(cv2.CAP_PROP_POS_MSEC,20000) 
-        while(cap.isOpened()):
+        while True:
             ret, frame = cap.read()  
             
             #get time, API returns in microseconds, opencv in milliseconds
@@ -70,7 +70,7 @@ class Video:
                 pcount=pcount+1
                 
             cv2.imshow('frame',frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
         
         cap.release()

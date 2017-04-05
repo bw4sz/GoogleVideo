@@ -20,4 +20,4 @@ def MotionMeerkat():
     video_instance.download()
     
     #show video with annotations
-    video_instance.show(write=False)
+    video_instance.show(write=True)

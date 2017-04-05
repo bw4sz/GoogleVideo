@@ -28,7 +28,6 @@ class Video:
         #frame counter
         fcount=0
         
-            
         #play video
         cap = cv2.VideoCapture(self.local_file)
         
@@ -78,10 +77,10 @@ class Video:
                 break
             
             if write:
-                vidname=os.path.basename(self.path)
+                vidname=os.path.basename(self.path).split(".")[0]
                 #just write a couple known frames to show the group
                 if fcount in (10,870,2477):
-                    annotated_file="staging/annotated_" + fcount + vidname                
+                    annotated_file="staging/annotated_" + str(fcount) + vidname + ".jpg"                
                     cv2.imwrite(annotated_file, frame)
         
         cap.release()

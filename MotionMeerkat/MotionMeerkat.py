@@ -19,5 +19,5 @@ def MotionMeerkat():
     #download file to play locally
     video_instance.download()
     
-    #show video
-    video_instance.write()
+    #show video with annotations
+    video_instance.show(write=False)

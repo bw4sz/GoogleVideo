@@ -10,8 +10,8 @@ class Video:
         self.path = path
     
     def label(self):
-        labels=label.main(self.path)
-        label.label_parse(labels)
+        self.labels=label.main(self.path)
+        label.label_parse(self.labels)
     
     def download(self):
         #check if path exists
@@ -23,7 +23,13 @@ class Video:
             print "Downloading..."
             #download
     
-    def write(self):
+    def show(self,write=False):
+        
+        #write filename TODO
+        if write:
+            vidname=os.path.basename(self.path)
+            self.annotated_file="staging/annotated_" + vidname
+            
         #play video
         cap = cv2.VideoCapture(self.local_file)
         
@@ -31,22 +37,45 @@ class Video:
         while(cap.isOpened()):
             ret, frame = cap.read()  
             
-            #get time
-            msec=cap.get(cv2.CAP_PROP_POS_MSEC)
+            #get time, API returns in microseconds, opencv in milliseconds
+            msec=cap.get(cv2.CAP_PROP_POS_MSEC)*1000
             print(msec)
             
             #which labels fall into this time
+            labels_to_write=list()
             
-            #write label
+            labelData = self.labels['response']['annotationResults'][0]['labelAnnotations']
+            for frame_label in labelData:
+                if 'locations' not in frame_label:
+                    print ('Error in label detection: ' + frame_label['description'])
+                else:
+                    locations = frame_label['locations']
+                    for location in locations:
+                        if 'segment' not in location:
+                            print 'Missing segment.'
+                        else:
+                            segment = location['segment']
+                            startTime = segment.get('startTimeOffset', '0')
+                            endTime = segment.get('endTimeOffset', '0')
+                            if msec > int(startTime) and msec < int(endTime):
+                                labels_to_write.append(str(frame_label['description']))
+
+            #write labels
             font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(frame,"I'm a label",(10,500), font, 1,(255,255,255),2)            
             
+            #position counter
+            pcount=0
+            for text in labels_to_write:
+                cv2.putText(frame,text,(10,100 + 40 * pcount), font, 1,(0,0,0),2)            
+                pcount=pcount+1
+                
             cv2.imshow('frame',frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         
         cap.release()
         cv2.destroyAllWindows()
+    
         
         
         

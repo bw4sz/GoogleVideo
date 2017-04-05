@@ -25,10 +25,9 @@ class Video:
     
     def show(self,write=False):
         
-        #write filename TODO
-        if write:
-            vidname=os.path.basename(self.path)
-            self.annotated_file="staging/annotated_" + vidname
+        #frame counter
+        fcount=0
+        
             
         #play video
         cap = cv2.VideoCapture(self.local_file)
@@ -36,6 +35,8 @@ class Video:
         #vidcap.set(cv2.CAP_PROP_POS_MSEC,20000) 
         while True:
             ret, frame = cap.read()  
+            
+            fcount=fcount+1
         
             #check for end of video
             if not ret:
@@ -69,12 +70,19 @@ class Video:
             #position counter
             pcount=0
             for text in labels_to_write:
-                cv2.putText(frame,text,(10,100 + 40 * pcount), font, 1,(0,0,0),2)            
+                cv2.putText(frame,text,(10,100 + 40 * pcount), font, 1,(255,255,255),2)            
                 pcount=pcount+1
-                
+               
             cv2.imshow('frame',frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+            
+            if write:
+                vidname=os.path.basename(self.path)
+                #just write a couple known frames to show the group
+                if fcount in (10,870,2477):
+                    annotated_file="staging/annotated_" + fcount + vidname                
+                    cv2.imwrite(annotated_file, frame)
         
         cap.release()
         cv2.destroyAllWindows()

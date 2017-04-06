@@ -13,10 +13,10 @@ def MotionMeerkat(path,keep=True,vidpath="",write=False):
     video_instance.download()
     
     #show video with annotations
-    video_instance.show(vidpath,write=write)
+    video_instance.show()
     
     #cleanup video staging file
-    video_instance.cleanup(keep)
+    video_instance.cleanup()
       
 #run if called directly from command line
 if __name__ == '__main__':

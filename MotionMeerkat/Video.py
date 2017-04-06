@@ -12,7 +12,8 @@ class Video:
         self.path = path # url to video
         self.vidpath=vidpath # where to save video locally
         self.keep=keep # should video be deleted
-    
+        self.write=write #write an annotated video
+        
     def label(self):
         self.labels=label.main(self.path)
         label.label_parse(self.labels)
@@ -78,7 +79,7 @@ class Video:
         while True:
             ret, frame = cap.read()  
             
-            fcount=fcount+1
+            fcount=fcount+1 # add frame count
         
             #check for end of video
             if not ret:
@@ -125,8 +126,8 @@ class Video:
         cap.release()
         cv2.destroyAllWindows()
     
-    def cleanup(self,keep):
-        if not keep:
+    def cleanup(self):
+        if not self.keep:
             os.remove(self.local_file)
         
         

@@ -3,6 +3,8 @@ import os
 import time
 import cv2
 import numpy
+from google.cloud import storage
+import urllib
 
 class Video:
     def __init__(self,path):
@@ -21,7 +23,29 @@ class Video:
         self.local_file="staging/" + vidname
         if not os.path.isfile(self.local_file):
             print "Downloading..."
-            #download
+            
+            #if google cloud path
+            
+            if self.path[0:3] == "gs:":
+                
+                #bucket name
+                bucket_name=self.path.split("/")[2]
+                
+                #file path
+                f=p.split("/")[3:]
+                source_blob_name='/'.join(f)
+                
+                destination_file_name=self.local_file
+                
+                #download from gcp
+                label.download_blob(bucket_name, source_blob_name, 
+                                   destination_file_name)
+            else:
+                #Any arbitrary public path 
+                urllib.urlretrieve(self.local_file, self.local_file)
+
+            
+        #TODO check if its within google cloud, use gcs fuse or its own API, doesn't need . 
     
     def show(self,write=False):
         
@@ -42,7 +66,6 @@ class Video:
                 break
             #get time, API returns in microseconds, opencv in milliseconds
             msec=cap.get(cv2.CAP_PROP_POS_MSEC)*1000
-            print(msec)
             
             #which labels fall into this time
             labels_to_write=list()

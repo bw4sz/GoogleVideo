@@ -2,6 +2,7 @@ import argparse
 import httplib2
 import time
 import json
+from google.cloud import storage
 
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials

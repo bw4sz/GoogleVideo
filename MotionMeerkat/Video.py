@@ -3,13 +3,15 @@ import os
 import time
 import cv2
 import numpy
-from google.cloud import storage
 import urllib
 
 class Video:
-    def __init__(self,path):
+    def __init__(self,path,keep=False):
         self.time = time.time()
         self.path = path
+        
+        #should video be deleted at the end?
+        self.keep=keep
     
     def label(self):
         self.labels=label.main(self.path)
@@ -22,7 +24,7 @@ class Video:
         print "Checking if %s exists" %(vidname)
         self.local_file="staging/" + vidname
         if not os.path.isfile(self.local_file):
-            print "Downloading..."
+            print "Downloading " + str(self.path)
             
             #if google cloud path
             
@@ -32,7 +34,7 @@ class Video:
                 bucket_name=self.path.split("/")[2]
                 
                 #file path
-                f=p.split("/")[3:]
+                f=self.path.split("/")[3:]
                 source_blob_name='/'.join(f)
                 
                 destination_file_name=self.local_file
@@ -40,22 +42,41 @@ class Video:
                 #download from gcp
                 label.download_blob(bucket_name, source_blob_name, 
                                    destination_file_name)
+                print "Download complete "
+                
             else:
                 #Any arbitrary public path 
-                urllib.urlretrieve(self.local_file, self.local_file)
-
-            
+                urllib.urlretrieve(self.path, self.local_file)
+                print "Download complete "
         #TODO check if its within google cloud, use gcs fuse or its own API, doesn't need . 
     
-    def show(self,write=False):
+    def show(self,vidpath,write=False):
         
         #frame counter
         fcount=0
+
+        if write:
+            
+            #load video
+            cap = cv2.VideoCapture(self.local_file)            
+            
+            #Get frame rate
+            fr=cap.get(5)
+            orig_image = cap.read()[1]  
         
+            #Get information about camera and image
+            width = np.size(orig_image, 1)
+            height = np.size(orig_image, 0)
+            frame_size=(width, height)                  
+        
+            #create videowriter with annotated file name
+            vidname=os.path.basename(self.path)
+            self.annotated_file= vidpath + "/annotated_" + vidname                
+            out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('M','J','P',"G"),float(fr),frame_size)                
+            
         #play video
         cap = cv2.VideoCapture(self.local_file)
-        
-        #vidcap.set(cv2.CAP_PROP_POS_MSEC,20000) 
+                
         while True:
             ret, frame = cap.read()  
             
@@ -96,19 +117,19 @@ class Video:
                 pcount=pcount+1
                
             cv2.imshow('frame',frame)
+            if write:
+                out.write(frame)
+            
+            #show frame - hit q to exit frame
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-            
-            if write:
-                vidname=os.path.basename(self.path).split(".")[0]
-                #just write a couple known frames to show the group
-                if fcount in (10,870,2477):
-                    annotated_file="staging/annotated_" + str(fcount) + vidname + ".jpg"                
-                    cv2.imwrite(annotated_file, frame)
-        
+                
         cap.release()
         cv2.destroyAllWindows()
     
+    def cleanup(self,keep):
+        if not keep:
+            os.remove(self.local_file)
         
         
         

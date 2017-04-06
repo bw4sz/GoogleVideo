@@ -6,4 +6,4 @@ I am building a cloud platform for scientists to annotate animal presence in eco
 
 These new tools use deep learing nueral networks to classify images contained in video sequences. 
 
-![Butterfly](https://www.dropbox.com/s/a5ixgmm33j3qgiy/annotated_870jantest.jpg?)
+![Butterfly](https://raw.github.com/bw4sz/GoogleVideo/dev/sample_image.jpg?)

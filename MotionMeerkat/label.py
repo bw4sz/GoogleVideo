@@ -84,7 +84,7 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
     except:
         print("User does not have access to that bucket. Trying public link:")
         gcs_url = 'https://%(bucket)s.storage.googleapis.com/%(file)s' % {'bucket':bucket_name, 'file':source_blob_name}
-        urllib.urlretrieve(self.path, self.local_file)
+        urllib.urlretrieve(gcs_url, destination_file_name)
         print "Download complete"        
     
     

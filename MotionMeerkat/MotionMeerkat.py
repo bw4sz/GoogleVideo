@@ -22,6 +22,7 @@ def MotionMeerkat(path='gs://api-project-773889352370-ml/Videos/jantest.mp4',kee
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-gcs_uri', help='The Google Cloud Storage URI of the video.')
+    parser.add_argument('-gcs_uri', help='The local file directory to save annotated video')    
     parser.add_argument('-keep', help='Should the downloaded file be kept after analysis?',action="store_true")  
     parser.add_argument('-write', help='Should a annotated video file be written',action="store_true")    
     parser.add_argument('-show', help='Show annotations within program video',action="store_true")    

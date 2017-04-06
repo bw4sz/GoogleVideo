@@ -6,12 +6,12 @@ import numpy as np
 import urllib
 
 class Video:
-    def __init__(self,path,keep=False):
-        self.time = time.time()
-        self.path = path
+    def __init__(self,path,vidpath,keep=False,write=False):
         
-        #should video be deleted at the end?
-        self.keep=keep
+        self.time = time.time() # start time
+        self.path = path # url to video
+        self.vidpath # where to save video locally
+        self.keep=keep # should video be deleted
     
     def label(self):
         self.labels=label.main(self.path)
@@ -22,7 +22,7 @@ class Video:
         #if not download file
         vidname=os.path.basename(self.path)
         print "Checking if %s exists" %(vidname)
-        self.local_file="staging/" + vidname
+        self.local_file= self.vidpath + vidname
         if not os.path.isfile(self.local_file):
             print "Downloading " + str(self.path)
             
@@ -42,20 +42,18 @@ class Video:
                 #download from gcp
                 label.download_blob(bucket_name, source_blob_name, 
                                    destination_file_name)
-                print "Download complete "
                 
             else:
                 #Any arbitrary public path 
                 urllib.urlretrieve(self.path, self.local_file)
-                print "Download complete "
-        #TODO check if its within google cloud, use gcs fuse or its own API, doesn't need . 
+            print "Download complete "
     
-    def show(self,vidpath,write=False):
+    def show(self):
         
         #frame counter
         fcount=0
 
-        if write:
+        if self.write:
             
             #load video
             cap = cv2.VideoCapture(self.local_file)            
@@ -71,7 +69,7 @@ class Video:
         
             #create videowriter with annotated file name
             vidname=os.path.basename(self.path)
-            self.annotated_file= vidpath + "/annotated_" + vidname                
+            self.annotated_file= self.vidpath + "/annotated_" + vidname                
             out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('M','J','P',"G"),float(fr),frame_size)                
             
         #play video
@@ -117,7 +115,7 @@ class Video:
                 pcount=pcount+1
                
             cv2.imshow('frame',frame)
-            if write:
+            if self.write:
                 out.write(frame)
             
             #show frame - hit q to exit frame

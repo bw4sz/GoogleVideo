@@ -1,4 +1,5 @@
 import argparse
+import urllib
 import httplib2
 import time
 import json
@@ -71,14 +72,20 @@ def label_parse(response):
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
     storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    blob = bucket.blob(source_blob_name)
-
-    blob.download_to_filename(destination_file_name)
-
-    print('Blob {} downloaded to {}.'.format(
-        source_blob_name,
-        destination_file_name))
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.blob(source_blob_name)
+    
+        blob.download_to_filename(destination_file_name)
+    
+        print('Blob {} downloaded to {}.'.format(
+            source_blob_name,
+            destination_file_name))        
+    except:
+        print("User does not have access to that bucket. Trying public link:")
+        gcs_url = 'https://%(bucket)s.storage.googleapis.com/%(file)s' % {'bucket':bucket_name, 'file':source_blob_name}
+        urllib.urlretrieve(self.path, self.local_file)
+        print "Download complete"        
     
     
 

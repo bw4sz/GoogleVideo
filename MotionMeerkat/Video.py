@@ -2,7 +2,7 @@ import label
 import os
 import time
 import cv2
-import numpy
+import numpy as np
 import urllib
 
 class Video:

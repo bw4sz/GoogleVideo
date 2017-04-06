@@ -1,10 +1,10 @@
 import argparse 
 import Video
 
-def MotionMeerkat(path='gs://api-project-773889352370-ml/Videos/jantest.mp4',keep=True,vidpath="",write=False,show=True):
+def MotionMeerkat(path,keep=True,vidpath="",write=False):
 
     #create instance
-    video_instance=Video.Video(path)
+    video_instance=Video.Video(path,vidpath=vidpath,keep=keep,write=write)
 
     #send to google for labels
     video_instance.label()  

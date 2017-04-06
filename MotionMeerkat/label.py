@@ -51,6 +51,7 @@ def main(gcs_uri):
     return(response)
 
 def label_parse(response):
+    
     labelData = response['response']['annotationResults'][0]['labelAnnotations']
     print ('Video Annotations:')
     for label in labelData:

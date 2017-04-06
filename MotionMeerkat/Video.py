@@ -10,7 +10,7 @@ class Video:
         
         self.time = time.time() # start time
         self.path = path # url to video
-        self.vidpath # where to save video locally
+        self.vidpath=vidpath # where to save video locally
         self.keep=keep # should video be deleted
     
     def label(self):

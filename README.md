@@ -7,3 +7,23 @@ I am building a cloud platform for scientists to annotate animal presence in eco
 These new tools use deep learing nueral networks to classify images contained in video sequences. 
 
 ![Butterfly](https://raw.github.com/bw4sz/GoogleVideo/dev/sample_image.jpg?)
+
+## Installation
+
+The following python packages need to be installed to run MotionMeerkat and the Google Cloud Video API
+
+## File Structure
+
+To specify a file to analyze
+
+```
+MotionMeerkat.MotionMeerkat(<pathtofile>)
+```
+
+To run general tests_basic
+
+```
+    python tests_basic.py
+```
+
+** Please note that the Google Cloud Intelligence API is current in private beta ** (4/8/2017) [Apply for access](https://cloud.google.com/video-intelligence/)

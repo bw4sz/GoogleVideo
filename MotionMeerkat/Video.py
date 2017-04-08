@@ -71,7 +71,7 @@ class Video:
             #create videowriter with annotated file name
             vidname=os.path.basename(self.path)
             self.annotated_file= self.vidpath + "/annotated_" + vidname                
-            out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('M','J','P',"G"),float(fr),frame_size)                
+            out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('D','I','V',"X"),float(fr),frame_size)                
             
         #play video
         cap = cv2.VideoCapture(self.local_file)

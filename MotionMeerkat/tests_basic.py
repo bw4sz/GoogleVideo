@@ -11,8 +11,8 @@ MotionMeerkat.MotionMeerkat(path='gs://api-project-773889352370-ml/Videos/jantes
 
 #Test 2
 #A new private file in my gcs bucket, reads the service account credentials, deletes file when done.
-MotionMeerkat.MotionMeerkat("gs://api-project-773889352370-ml/Videos/shark.avi",write=True,vidpath="C:/Users/Ben/Dropbox/GoogleCloud")
+#MotionMeerkat.MotionMeerkat("gs://api-project-773889352370-ml/Videos/shark.avi",write=True,vidpath="C:/Users/Ben/Dropbox/GoogleCloud")
 
 #Test 3
 #A new public file in someone else's gcs bucket, deletes file when done.
-MotionMeerkat.MotionMeerkat("gs://cloud-ml-sandbox/video/chicago.mp4",write=True,vidpath="C:/Users/Ben/Dropbox/GoogleCloud")
+#MotionMeerkat.MotionMeerkat("gs://cloud-ml-sandbox/video/chicago.mp4",write=True,vidpath="C:/Users/Ben/Dropbox/GoogleCloud")

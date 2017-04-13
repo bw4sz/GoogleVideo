@@ -20,8 +20,6 @@ To specify a file to analyze
 MotionMeerkat.MotionMeerkat(<pathtofile>)
 ```
 
-The main thrust of the program to call the Cloud Video Intelligence API and parse the results is within MotionMeerkat/Video.py label()
-
 To run general tests_basic
 
 ```

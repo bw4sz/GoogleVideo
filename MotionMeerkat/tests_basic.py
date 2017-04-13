@@ -16,3 +16,7 @@ MotionMeerkat.MotionMeerkat(path='gs://api-project-773889352370-ml/Videos/jantes
 #Test 3
 #A new public file in someone else's gcs bucket, deletes file when done.
 #MotionMeerkat.MotionMeerkat("gs://cloud-ml-sandbox/video/chicago.mp4",write=True,vidpath="C:/Users/Ben/Dropbox/GoogleCloud")
+
+#Test 4
+#A low quality file with several scene changes.
+#MotionMeerkat.MotionMeerkat("gs://api-project-773889352370-ml/Videos/CostaRicaCloudForest.avi",write=True,vidpath="C:/Users/Ben/Dropbox/GoogleCloud")

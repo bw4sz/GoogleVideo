@@ -22,10 +22,10 @@ class Video:
         #check if path exists
         #if not download file
         vidname=os.path.basename(self.path)
-        print "Checking if %s exists" %(vidname)
+        print("Checking if %s exists" %(vidname))
         self.local_file= self.vidpath + vidname
         if not os.path.isfile(self.local_file):
-            print "Downloading " + str(self.path)
+            print("Downloading " + str(self.path))
             
             #if google cloud path
             
@@ -47,7 +47,7 @@ class Video:
             else:
                 #Any arbitrary public path 
                 urllib.urlretrieve(self.path, self.local_file)
-            print "Download complete "
+            print ("Download complete ")
     
     def show(self):
         
@@ -92,19 +92,13 @@ class Video:
             
             labelData = self.labels['response']['annotationResults'][0]['labelAnnotations']
             for frame_label in labelData:
-                if 'locations' not in frame_label:
-                    print ('Error in label detection: ' + frame_label['description'])
-                else:
-                    locations = frame_label['locations']
-                    for location in locations:
-                        if 'segment' not in location:
-                            print 'Missing segment.'
-                        else:
-                            segment = location['segment']
-                            startTime = segment.get('startTimeOffset', '0')
-                            endTime = segment.get('endTimeOffset', '0')
-                            if msec > int(startTime) and msec < int(endTime):
-                                labels_to_write.append(str(frame_label['description']))
+                locations = frame_label['locations']
+                for location in locations:
+                    segment = location['segment']
+                    startTime = segment.get('startTimeOffset', '0')
+                    endTime = segment.get('endTimeOffset', '0')
+                    if msec > int(startTime) and msec < int(endTime):
+                        labels_to_write.append(str(frame_label['description']))
 
             #write labels
             font = cv2.FONT_HERSHEY_SIMPLEX
@@ -112,7 +106,7 @@ class Video:
             #position counter
             pcount=0
             for text in labels_to_write:
-                cv2.putText(frame,text,(10,100 + 40 * pcount), font, 1,(255,255,255),2)            
+                cv2.putText(frame,text,(10,20 + 25 * pcount), font, 0.75,(255,255,255),1,cv2.LINE_AA)            
                 pcount=pcount+1
                
             cv2.imshow('frame',frame)

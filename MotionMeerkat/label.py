@@ -58,16 +58,16 @@ def label_parse(response):
         if 'locations' not in label:
             print ('Error in label detection: ' + label['description'])
         else:
-            print label['description']
+            print (label['description'])
             locations = label['locations']
             for location in locations:
                 if 'segment' not in location:
-                    print 'Missing segment.'
+                    print ('Missing segment.')
                 else:
                     segment = location['segment']
                     startTime = segment.get('startTimeOffset', '0')
                     endTime = segment.get('endTimeOffset', '0')
-                    print "  " + startTime + ", " + endTime
+                    print ("  " + startTime + ", " + endTime)
     
 
 def download_blob(bucket_name, source_blob_name, destination_file_name):
@@ -86,7 +86,7 @@ def download_blob(bucket_name, source_blob_name, destination_file_name):
         print("User does not have access to that bucket. Trying public link:")
         gcs_url = 'https://%(bucket)s.storage.googleapis.com/%(file)s' % {'bucket':bucket_name, 'file':source_blob_name}
         urllib.urlretrieve(gcs_url, destination_file_name)
-        print "Download complete"        
+        print ("Download complete")        
     
     
 

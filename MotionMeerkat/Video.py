@@ -23,7 +23,7 @@ class Video:
         #if not download file
         vidname=os.path.basename(self.path)
         print("Checking if %s exists" %(vidname))
-        self.local_file= self.vidpath + vidname
+        self.local_file= self.vidpath +"/"+ vidname
         if not os.path.isfile(self.local_file):
             print("Downloading " + str(self.path))
             
@@ -86,6 +86,7 @@ class Video:
                 break
             #get time, API returns in microseconds, opencv in milliseconds
             msec=cap.get(cv2.CAP_PROP_POS_MSEC)*1000
+            
             
             #which labels fall into this time
             labels_to_write=list()

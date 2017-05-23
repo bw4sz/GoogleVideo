@@ -29,7 +29,11 @@ def main(gcs_uri):
         body={
             'inputUri': gcs_uri,
             'features': ['LABEL_DETECTION']
-        })
+            ,
+            "videoContext": {
+                    "labelDetectionMode": "FRAME_MODE",
+                    "stationaryCamera": "True"            
+        }})
 
     response = video_service_request.execute()
     name = response['name']

@@ -6,13 +6,14 @@ import numpy as np
 import urllib
 
 class Video:
-    def __init__(self,path,vidpath,keep=False,write=False):
+    def __init__(self,path,vidpath,keep,write,view):
         
         self.time = time.time() # start time
         self.path = path # url to video
         self.vidpath=vidpath # where to save video locally
         self.keep=keep # should video be deleted
         self.write=write #write an annotated video
+        self.view=view #view output as it happens
         
     def label(self):
         self.labels=label.main(self.path)
@@ -71,7 +72,7 @@ class Video:
             #create videowriter with annotated file name
             vidname=os.path.basename(self.path)
             self.annotated_file= self.vidpath + "/annotated_" + vidname                
-            out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('D','I','V',"X"),float(fr),frame_size)                
+            out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('X','V','I',"D"),float(fr),frame_size)                
             
         #play video
         cap = cv2.VideoCapture(self.local_file)
@@ -85,21 +86,20 @@ class Video:
             if not ret:
                 break
             #get time, API returns in microseconds, opencv in milliseconds
-            msec=cap.get(cv2.CAP_PROP_POS_MSEC)*1000
-            
+            msec=cap.get(cv2.CAP_PROP_POS_MSEC)*1000            
             
             #which labels fall into this time
             labels_to_write=list()
             
-            labelData = self.labels['response']['annotationResults'][0]['labelAnnotations']
-            for frame_label in labelData:
-                locations = frame_label['locations']
-                for location in locations:
-                    segment = location['segment']
-                    startTime = segment.get('startTimeOffset', '0')
-                    endTime = segment.get('endTimeOffset', '0')
-                    if msec > int(startTime) and msec < int(endTime):
-                        labels_to_write.append(str(frame_label['description']))
+            labelData = self.labels.label_annotations
+            for label in labelData:
+                for location in label.locations:
+                        segment = location.segment
+                        startTime = segment.start_time_offset
+                        endTime = segment.end_time_offset
+                        if msec > (int(startTime)-400000) and msec < (int(endTime)+400000):
+                            labels_to_write.append(str(label.description))                        
+
 
             #write labels
             font = cv2.FONT_HERSHEY_SIMPLEX
@@ -107,16 +107,17 @@ class Video:
             #position counter
             pcount=0
             for text in labels_to_write:
-                cv2.putText(frame,text,(10,20 + 25 * pcount), font, 0.75,(255,255,255),1,cv2.LINE_AA)            
+                cv2.putText(frame,text,(10,30 + 50 * pcount), font, 1,(255,0,0),2,cv2.LINE_AA)            
                 pcount=pcount+1
                
-            cv2.imshow('frame',frame)
             if self.write:
                 out.write(frame)
             
-            #show frame - hit q to exit frame
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            if self.view:
+                cv2.imshow('frame',frame)                
+                #show frame - hit q to exit frame
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
                 
         cap.release()
         cv2.destroyAllWindows()

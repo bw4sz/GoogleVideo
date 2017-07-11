@@ -14,9 +14,10 @@ def CommandArgs():
     parser.add_argument("--crop", help="Set region of interest?",action='store_true')
     parser.add_argument("--todraw", help="Draw boxes to highlight motion'?",action="store_true")
     parser.add_argument("--show", help="Show frames as you process",default='frames',action='store_true')
-    parser.add_argument("--tensorflow", help="Process model with a tensorflow image trained on google cloud machine learning engine",action='store_false')	
     parser.add_argument("--path_to_model", help="Path to model/ directory",default="C:/Users/Ben/Dropbox/GoogleCloud/DeepMeerkat_20170623_155904/model/")								    
     parser.add_argument("--review_type", help="Output images as 'frames','video','both', 'none' ?",default='frames',type=str)
+    parser.add_argument("--padding", help="Number of frames to keep on either side of motion events",default=10,type=int)
+    
     args=parser.parse_args()
     return(args)
     

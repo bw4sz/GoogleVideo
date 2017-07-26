@@ -96,8 +96,9 @@ class Video:
         #Annotations dictionary
         self.annotations={}
         
+        ##Google Properties##
         #Google Credentials
-        credentials = GoogleCredentials.get_application_default()
+        #credentials = GoogleCredentials.get_application_default()
         if not credentials:
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args.google_account
             
@@ -106,6 +107,17 @@ class Video:
         
         #TODO check if bucket exists.
         self.bucket = storage_client.get_bucket(args.bucket)
+        
+        ##Cloud Video Properties
+        self.video_client = (video_intelligence_service_client.
+                        VideoIntelligenceServiceClient())
+        self.features = [enums.Feature.LABEL_DETECTION]
+        self.video_context = video_intelligence_pb2.VideoContext()
+        self.video_context.stationary_camera = True
+        self.video_context.label_detection_mode = video_intelligence_pb2.FRAME_MODE        
+        
+        #Video clip annontations
+        self.clip_labels={}
         
         #create local output directory            
         normFP=os.path.normpath(self.args.input)
@@ -189,6 +201,7 @@ class Video:
             #Next frame if no contours
             if len(self.contours) == 0 :
                 self.end_sequence(False)
+                continue
               
             #bounding boxes
             bounding_boxes = self.cluster_bounding_boxes(self.contours)
@@ -196,6 +209,7 @@ class Video:
             #Next frame if no bounding boxes
             if len(bounding_boxes) == 0 :
                 self.end_sequence(False)
+                continue
 
             #minimum box size
             width = np.size(self.original_image, 1)
@@ -211,7 +225,8 @@ class Video:
             
             #next frame is no remaining bounding boxes
             if len(remaining_bounding_box)==0:
-                self.end_sequence(False)                
+                self.end_sequence(False)
+                continue
                             
             #Write bounding box time event, depends on proper frame rate
             sec = timedelta(seconds=int(self.frame_count/float(self.frame_rate)))             
@@ -229,11 +244,8 @@ class Video:
                     cv2.waitKey(0)
         cv2.destroyAllWindows()            
         
-        #store frames
+        #store frame history
         self.end_sequence(True)
-        
-        #write clip
-        self.write_clip()
     
     def write_clip(self):
         
@@ -248,9 +260,10 @@ class Video:
         out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('X','V','I',"D"),float(fr),frame_size)                
         for frame in self.padding_frames + self.motion_frames:
             out.write()
-            
-    #When frame hits the end of processing
-    def end_sequence(self,Motion):        
+        #return path
+        return self.annotated_file
+        
+    def end_sequence(self,Motion):        #When frame hits the end of processing
         #Capture Frame
         if Motion:
             self.motion_frames.append(self.original_image)
@@ -262,9 +275,9 @@ class Video:
         
         #If Motion History is sufficient
         if self.MotionHistory[-5:] == [True,True,True,False,False]:
-            self.write_clip()
-            self.upload()
-        continue
+            path=self.write_clip()
+            self.upload(path)
+            self.clip_labels[path]=self.label(path)
     
     def read_frame(self):
         
@@ -288,9 +301,7 @@ class Video:
         
         self.fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False,varThreshold=float(self.args.mogvariance))
         self.fgbg.setBackgroundRatio(0.95)
-        
-        #self.fgbg= libbgs.SuBSENSE()
-    
+            
     #Frame Subtraction
     def background_apply(self):
         
@@ -353,6 +364,7 @@ class Video:
             self.update_rect(rect)
             self.members = []    
     def upload(self,clip):
+        
         #Upload clip to google cloud
         #construct filename
         splitname=os.path.split(clip)
@@ -363,6 +375,20 @@ class Video:
             blob.upload_from_filename(filename=clip)                        
             #upload to gcp                
             print("Uploaded " + clip)
+    
+    def label(path):
+        operation = self.video_client.annotate_video(path, self.features, video_context=self.video_context)
+        print('\nProcessing video for label annotations:')
+    
+        while not operation.done():
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            time.sleep(10)
+    
+        print('\nFinished processing.')
+    
+        results = operation.result().annotation_results[0]
+        return results
     
     def write(self):      
         
@@ -389,27 +415,24 @@ class Video:
             #Frames per second
             writer.writerow(["Frame processing rate",round(float(self.frame_count)/(self.total_min*60),2)])
         
-        #Write frame annotations
-        self.output_annotations=self.file_destination + "/annotations.csv"
+        #Write frame bounding boxes
+        self.output_annotations=self.file_destination + "/bounding_boxes.csv"
         with open(self.output_annotations, 'wb') as f:  
-            writer = csv.writer(f,)
+            writer = csv.writer(f)
             writer.writerow(["Frame","x","y","h","w"])
             for x in self.annotations.keys():   
                 bboxes=self.annotations[x]
                 for bbox in bboxes: 
                     writer.writerow([x,bbox.x,bbox.y,bbox.h,bbox.w])
-                    
-        if self.googlecloud:
-            #write bounding boxes to google cloud
-            
-            blob=self.bucket.blob(self.parsed.path[1:]+"/annotations.csv")
-            blob.upload_from_filename(self.output_annotations)            
 
-            #write parameter log to google cloud
-            blob=self.bucket.blob(self.parsed.path[1:]+"/parameters.csv")
-            blob.upload_from_filename(self.output_args)            
-            
-                    
+        #Write clip annotations
+        self.output_annotations=self.file_destination + "/annotations.csv"
+        with open(self.clip_labels, 'wb') as f:  
+            writer = csv.writer(f)
+            for x in self.annotations.keys():   
+                label=self.clip_labels[x]
+                for bbox in bboxes: 
+                    writer.writerow([x,label])
     def adapt(self):
         
             #If current frame is a multiple of the 1000 frames

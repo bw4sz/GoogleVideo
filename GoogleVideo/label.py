@@ -24,7 +24,7 @@ def main(path):
     while not operation.done():
         sys.stdout.write('.')
         sys.stdout.flush()
-        time.sleep(20)
+        time.sleep(10)
 
     print('\nFinished processing.')
 

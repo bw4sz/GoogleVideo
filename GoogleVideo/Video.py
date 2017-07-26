@@ -10,30 +10,9 @@ import Crop
 from operator import itemgetter
 from itertools import groupby
 from urlparse import urlparse
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from google.cloud import storage
 from Geometry import *
-
-from google.cloud.gapic.videointelligence.v1beta1 import enums
-from google.cloud.gapic.videointelligence.v1beta1 import (
-    video_intelligence_service_client)
-from google.cloud.proto.videointelligence.v1beta1 import video_intelligence_pb2
-
-def ClipLength(l,frame_rate):
-    
-    #get first position of Motion
-    indexes = [next(group) for key, group in groupby(enumerate(l), key=itemgetter(1))]
-    
-    #number of frames with Motion
-    len_indexes = [len(list(group)) for key, group in groupby(l)]
-    
-    clip_range=[]
-    
-    #Create time ranges by dividing frame counts by frame rate
-    for position,length in enumerate(len_indexes):
-        if indexes[position][1] == True:
-            clip_range.append([float(indexes[position][0])/frame_rate,float(indexes[position][0]+length)/frame_rate])
-    return clip_range
+from VideoClip import VideoClip
     
 class Video:
     def __init__(self,vid,args):
@@ -48,12 +27,11 @@ class Video:
         #set descriptors
         self.frame_count=0
         
-        #Annotations dictionary
+        #Box Annotations dictionary
         self.annotations={}
         
         ##Google Properties##
         #Google Credentials
-        #credentials = GoogleCredentials.get_application_default()
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args.google_account
             
         #Google Cloud Storage
@@ -61,15 +39,7 @@ class Video:
         
         #TODO check if bucket exists.
         self.bucket = storage_client.get_bucket(args.bucket)
-        
-        ##Cloud Video Properties
-        self.video_client = (video_intelligence_service_client.
-                        VideoIntelligenceServiceClient())
-        self.features = [enums.Feature.LABEL_DETECTION]
-        self.video_context = video_intelligence_pb2.VideoContext()
-        self.video_context.stationary_camera = True
-        self.video_context.label_detection_mode = video_intelligence_pb2.FRAME_MODE        
-        
+                
         #Video clip annontations
         self.clip_labels={}
         
@@ -127,12 +97,7 @@ class Video:
             
             #background subtraction
             self.background_apply()
-                                
-            #view the background
-            #bg=self.fgbg.getBackgroundImage()
-            #cv2.imshow("Background", bg)
-            #cv2.waitKey(1)            
-            
+                                            
             #skip the first frame after adding it to the background.
             if self.IS_FIRST_FRAME:
                 print("Skipping first frame")
@@ -186,7 +151,6 @@ class Video:
                     cv2.imshow("Motion_Event", self.original_image)
                     cv2.waitKey(0)
         cv2.destroyAllWindows()            
-        
         
     def read_frame(self):
         
@@ -279,11 +243,11 @@ class Video:
         #multiply frame number by frame rate to get timestamp        
         clip_range=ClipLength(self.MotionHistory,self.frame_rate)
         
-        #Clip rules
+        ##Clip rules##
         
-        #1) If two clips are within 10 seconds, combine.
+        #1) If two consecutive clips are within 10 seconds, combine.
         revised_clips=[]
-        for index,clip in enumerate(clip_range):
+        for index,clip in enumerate(clip_range[:-1]):
             if (clip_range[index][1] - clip_range[index+1][0]) < 10:
                 combined=clip_range[index] + clip_range[index+1]
                 revised_clips.append([min(combined),max(combined)])
@@ -291,52 +255,33 @@ class Video:
         #2 If clip duration is less than 2 second, remove
         revised_clips=[x[(x[1]-x[0] > 2)] for x in revised_clips]
         
-        #send to ffmpeg with names
-        self.clips_to_upload=[]
+        #If no clips after rules
+        if len(revised_clips)==0:
+            print("No remaining clips")
+            return None
         
-        for index,clip in enumerate(revised_clips):
+        #Create clip class
+        VideoClips=[]
+        for index,clip_info in enumerate(revised_clips):
+            cl=VideoClip()
+            cl.begin=clip_info[0]
+            cl.end=clip_info[1]
+            cl.frame_rate=self.frame_rate
+            
+            #GCS path
             vname,ext=os.path.splitext(self.args.video)
             
             #add clip number
-            newname=vname+"_"+str(index)+".avi"
-            
-            #extract clip
-            ffmpeg_extract_subclip(self.args.video, clip[0], clip[1], targetname=newname)
-            self.clips_to_upload.append(newname)
-            
-    def upload(self):
+            cl.gcs_path=vname+"_"+str(index)+".avi"
+            VideoClips.append(cl)
         
-        #Upload clip to google cloud
-        #construct filename
-        self.clips_to_run=[]
-        
-        for clip in self.clips_to_upload:
-            splitname=os.path.split(clip)
-            filename=splitname[len(splitname)-1]
-            blob = self.bucket.blob("VideoMeerkat" + "/" + filename.lower())
-            
-            self.clips_to_run.append('gs://' + self.bucket.name +"/"+ blob.name)
-            
-            if not blob.exists():
-                blob.upload_from_filename(filename=clip)                        
-                #upload to gcp                
-                print("Uploaded " + clip)
-    
-    def label(self):
-        
-        for path in self.clips_to_run:
-            operation = self.video_client.annotate_video(path, self.features, video_context=self.video_context)
-            print('\nProcessing video for label annotations:')
-        
-            while not operation.done():
-                sys.stdout.write('.')
-                sys.stdout.flush()
-                time.sleep(8)
-        
-            print('\nFinished processing.')
-        
-            results = operation.result().annotation_results
-            print results
+        #for each VideoClip, cut segment using FFMPEG, upload to GCS and annotate
+        clip_annotations=[]
+        for clip in VideoClips:
+            clip.ffmpeg()
+            clip.upload()
+            clip.label()
+            clip_annotations.append(clip.parse())
     
     def write(self):      
         
@@ -395,7 +340,22 @@ class Video:
                     if self.args.mogvariance > 120: 
                         self.args.mogvariance = 120
                     print("Adapting to video conditions: increasing MOG variance tolerance to %d" % self.args.mogvariance)
-        
-            
-            
-            
+
+###Helper Functions#####
+                    
+def ClipLength(l,frame_rate):
+    
+    #get first position of Motion
+    indexes = [next(group) for key, group in groupby(enumerate(l), key=itemgetter(1))]
+    
+    #number of frames with Motion
+    len_indexes = [len(list(group)) for key, group in groupby(l)]
+    
+    clip_range=[]
+    
+    #Create time ranges by dividing frame counts by frame rate
+    for position,length in enumerate(len_indexes):
+        if indexes[position][1] == True:
+            clip_range.append([float(indexes[position][0])/frame_rate,float(indexes[position][0]+length)/frame_rate])
+    return clip_range
+

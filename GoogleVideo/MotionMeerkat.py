@@ -35,9 +35,7 @@ class MotionMeerkat:
         for vid in self.queue:
             video_instance=Video.Video(vid,self.args)
             video_instance.analyze()
-            video_instance.clip()
-            video_instance.upload()
-            video_instance.label()            
+            video_instance.clip()          
             video_instance.write()
         
 if __name__ == "__main__":

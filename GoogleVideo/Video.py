@@ -53,19 +53,16 @@ class Video:
         storage_client = storage.Client()
         
         #TODO check if bucket exists.
-        self.bucket = storage_client.get_bucket(args.bucket)
-        
-        #create local output directory            
-        normFP=os.path.normpath(self.args.input)
+        self.bucket = storage_client.get_bucket(args.bucket)        
+
+        #create output directory
+        normFP=os.path.normpath(vid)
         (filepath, filename)=os.path.split(normFP)
         (shortname, extension) = os.path.splitext(filename)
         (_,IDFL) = os.path.split(filepath) 
-        
-        if self.args.batch:
-            self.file_destination=os.path.join(self.args.output,shortname)        
-        else:
-            self.file_destination=os.path.join(self.args.output,IDFL)
-            self.file_destination=os.path.join(self.file_destination,shortname)        
+    
+        self.file_destination=os.path.join(self.args.output,IDFL)                
+        self.file_destination=os.path.join(self.file_destination,shortname)               
 
         if not os.path.exists(self.file_destination):
             os.makedirs(self.file_destination)        
@@ -75,7 +72,7 @@ class Video:
         self.cap=cv2.VideoCapture(self.args.video)
         
         #set frame frate
-        self.frame_rate=round(self.cap.get(5))
+        self.frame_rate=self.cap.get(5)
         
         #background subtraction
         self.background_instance=self.create_background() 
@@ -90,7 +87,7 @@ class Video:
          
         if self.args.show: 
             cv2.namedWindow("Motion_Event")
-            cv2.namedWindow("Background")            
+            #cv2.namedWindow("Background")            
             
         while True:
 
@@ -271,27 +268,30 @@ class Video:
         ##Clip rules##
         
         #1) If two consecutive clips are within 10 seconds, combine.
-        revised_clips=[]
+        rule1=[]
         for index,clip in enumerate(clip_range[:-1]):
             if (clip_range[index][1] - clip_range[index+1][0]) < 10:
                 combined=clip_range[index] + clip_range[index+1]
-                revised_clips.append([min(combined),max(combined)])
+                rule1.append([min(combined),max(combined)])
         
         #2 If clip duration is less than 2 second, remove
-        revised_clips=[x[(x[1]-x[0] > 2)] for x in revised_clips]
+        rule2=[]
+        for clip in rule1:
+            if clip[1]-clip[0] > 2:
+                rule2.append(clip)
         
         #If no clips after rules
-        if len(revised_clips)==0:
+        if len(rule2)==0:
             print("No remaining clips")
             return None
         
         #turn back class if needed
-        if isinstance(revised_clips[0],float):
-            revised_clips=[revised_clips]
+        if isinstance(rule2[0],float):
+            rule2=[rule2]
             
         #Create clip class
         VideoClips=[]
-        for index,clip_info in enumerate(revised_clips):
+        for index,clip_info in enumerate(rule2):
             cl=VideoClip(video_context=self.video_context,features=self.features,video_client=self.video_client)
             
             cl.bucket=self.bucket
@@ -301,8 +301,8 @@ class Video:
             cl.frame_rate=self.frame_rate 
             
             #add clip number and set GCS path
-            vname,ext=os.path.splitext(self.args.video) 
-            cl.local_path=vname+"_"+str(index)+".avi"
+            vname,ext=os.path.splitext(os.path.basename(self.args.video))
+            cl.local_path= self.file_destination + "/" + vname+"_"+str(index)+".avi"
             VideoClips.append(cl)
         
         #for each VideoClip, cut segment using FFMPEG, upload to GCS and annotate using cloud video intelligence
@@ -352,12 +352,11 @@ class Video:
         self.output_annotations=self.file_destination + "/annotations.csv"
         with open(self.output_annotations, 'wb') as f:  
             writer = csv.writer(f)
-            writer.writerow(["Video","Clip","Label","Start_Clip_Time","End_Clip_Time","Confidence"])
+            writer.writerow(["Video","Clip","Label","Start_Clip_Time","End_Clip_Time","Start_Video_Time","End_Video_Time","Confidence"])
             for clip in self.clip_labels: 
                 for line in clip:
                     writer.writerow(line)
                 
-
 ###Helper Functions#####
                     
 def ClipLength(l,frame_rate):
@@ -375,4 +374,3 @@ def ClipLength(l,frame_rate):
         if indexes[position][1] == True:
             clip_range.append([float(indexes[position][0])/frame_rate,float(indexes[position][0]+length)/frame_rate])
     return clip_range
-

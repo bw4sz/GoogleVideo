@@ -33,10 +33,10 @@ class VideoClip:
         self.gcs_path='gs://' + self.bucket.name +"/"+ blob.name
         
         if not blob.exists():
-            blob.upload_from_filename(filename=clip)                        
+            blob.upload_from_filename(filename=self.local_path)                        
             #upload to gcp                
-            print("Uploaded " + clip)
-    
+            print("Uploaded " + self.gcs_path)
+
     def label(self):
         
         operation = self.video_client.annotate_video(self.gcs_path, self.features, video_context=self.video_context)
@@ -74,8 +74,10 @@ class VideoClip:
                 self.parsed_labels.append([self.original_path,
                                            self.local_path,
                                            str(label.description), 
-                                           location.segment.start_time_offset,
-                                           location.segment.end_time_offset,
+                                           location.segment.start_time_offset/1000000.0,
+                                           location.segment.end_time_offset/1000000.0,
+                                           location.segment.start_time_offset/1000000.0+self.begin,
+                                           location.segment.start_time_offset/1000000.0+self.begin,
                                            location.confidence])
         return self.parsed_labels        
         

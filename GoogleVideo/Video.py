@@ -13,6 +13,12 @@ from urlparse import urlparse
 from google.cloud import storage
 from Geometry import *
 from VideoClip import VideoClip
+
+from google.cloud.gapic.videointelligence.v1beta1 import enums
+from google.cloud.gapic.videointelligence.v1beta1 import (
+    video_intelligence_service_client)
+from google.cloud.proto.videointelligence.v1beta1 import video_intelligence_pb2
+
     
 class Video:
     def __init__(self,vid,args):
@@ -34,6 +40,16 @@ class Video:
         #Google Credentials
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args.google_account
             
+        #Set Google Credentials and Properties
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args.google_account
+        
+        ##Cloud Video Properties
+        self.video_client = (video_intelligence_service_client.VideoIntelligenceServiceClient())
+        self.features = [enums.Feature.LABEL_DETECTION]
+        self.video_context = video_intelligence_pb2.VideoContext()
+        self.video_context.stationary_camera = True
+        self.video_context.label_detection_mode = video_intelligence_pb2.FRAME_MODE        
+        
         #Google Cloud Storage
         storage_client = storage.Client()
         
@@ -175,7 +191,6 @@ class Video:
         self.fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False,varThreshold=float(self.args.mogvariance))
         self.fgbg.setBackgroundRatio(0.95)
             
-    #Frame Subtraction
     def background_apply(self):
         
         #Apply Subtraction
@@ -185,6 +200,20 @@ class Video:
         #Erode to remove noise, dilate the areas to merge bounded objects
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15))
         self.image= cv2.morphologyEx(self.image, cv2.MORPH_OPEN, kernel)
+    def adapt(self):
+        
+            #If current frame is a multiple of the 1000 frames
+            if self.frame_count % 1000 == 0:                                  
+                #get the percent of frames returned in the last 10 minutes
+                if (sum([x < self.frame_count-1000 for x in self.annotations.keys()])/1000) > 0.05:
+                        
+                    #increase tolerance rate
+                    self.args.mogvariance+=5
+    
+                    #add a ceiling
+                    if self.args.mogvariance > 120: 
+                        self.args.mogvariance = 120
+                    print("Adapting to video conditions: increasing MOG variance tolerance to %d" % self.args.mogvariance)
 
     def find_contour(self):
             _,self.contours,hierarchy = cv2.findContours(self.image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE )
@@ -260,34 +289,37 @@ class Video:
             print("No remaining clips")
             return None
         
+        #turn back class if needed
+        if isinstance(revised_clips[0],float):
+            revised_clips=[revised_clips]
+            
         #Create clip class
         VideoClips=[]
         for index,clip_info in enumerate(revised_clips):
-            cl=VideoClip()
-            cl.begin=clip_info[0]
-            cl.end=clip_info[1]
-            cl.frame_rate=self.frame_rate
+            cl=VideoClip(video_context=self.video_context,features=self.features,video_client=self.video_client)
+            cl.orginal_path=self.args.video #video path on local machine
+            cl.begin=clip_info[0] # Begin Time
+            cl.end=clip_info[1] #End Time
+            cl.frame_rate=self.frame_rate 
             
-            #GCS path
-            vname,ext=os.path.splitext(self.args.video)
-            
-            #add clip number
-            cl.gcs_path=vname+"_"+str(index)+".avi"
+            #add clip number and set GCS path
+            vname,ext=os.path.splitext(self.args.video) 
+            cl.local_path=vname+"_"+str(index)+".avi"
             VideoClips.append(cl)
         
-        #for each VideoClip, cut segment using FFMPEG, upload to GCS and annotate
-        clip_annotations=[]
+        #for each VideoClip, cut segment using FFMPEG, upload to GCS and annotate using cloud video intelligence
+        clip_labels=[]
         for clip in VideoClips:
             clip.ffmpeg()
             clip.upload()
             clip.label()
-            clip_annotations.append(clip.parse())
+            clip_labels.append(clip.parse())
     
     def write(self):      
         
         #write parameter logs        
         self.output_args=self.file_destination + "/parameters.csv"
-        with open(self.output_args, 'wb') as f:  
+        with open(self.output_args, 'w') as f:  
             writer = csv.writer(f,)
             writer.writerows(self.args.__dict__.items())
             
@@ -310,7 +342,7 @@ class Video:
         
         #Write frame bounding boxes
         self.output_annotations=self.file_destination + "/bounding_boxes.csv"
-        with open(self.output_annotations, 'wb') as f:  
+        with open(self.output_annotations, 'w') as f:  
             writer = csv.writer(f)
             writer.writerow(["Frame","x","y","h","w"])
             for x in self.annotations.keys():   
@@ -320,26 +352,11 @@ class Video:
 
         #Write clip annotations
         self.output_annotations=self.file_destination + "/annotations.csv"
-        with open(self.clip_labels, 'wb') as f:  
+        with open(self.clip_labels, 'w') as f:  
             writer = csv.writer(f)
-            for x in self.annotations.keys():   
-                label=self.clip_labels[x]
-                for bbox in bboxes: 
-                    writer.writerow([x,label])
-    def adapt(self):
-        
-            #If current frame is a multiple of the 1000 frames
-            if self.frame_count % 1000 == 0:                                  
-                #get the percent of frames returned in the last 10 minutes
-                if (sum([x < self.frame_count-1000 for x in self.annotations.keys()])/1000) > 0.05:
-                        
-                    #increase tolerance rate
-                    self.args.mogvariance+=5
-    
-                    #add a ceiling
-                    if self.args.mogvariance > 120: 
-                        self.args.mogvariance = 120
-                    print("Adapting to video conditions: increasing MOG variance tolerance to %d" % self.args.mogvariance)
+            for line in self.clip_labels: 
+                writer.writerow(line)
+                
 
 ###Helper Functions#####
                     

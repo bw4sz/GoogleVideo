@@ -1,37 +1,25 @@
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-from google.cloud.gapic.videointelligence.v1beta1 import enums
-from google.cloud.gapic.videointelligence.v1beta1 import (
-    video_intelligence_service_client)
-from google.cloud.proto.videointelligence.v1beta1 import video_intelligence_pb2
-
-#Set Google Credentials and Properties
-##Cloud Video Properties
-video_client = (video_intelligence_service_client.
-                         VideoIntelligenceServiceClient())
-features = [enums.Feature.LABEL_DETECTION]
-video_context = video_intelligence_pb2.VideoContext()
-video_context.stationary_camera = True
-video_context.label_detection_mode = video_intelligence_pb2.FRAME_MODE        
 
 class VideoClip:
     
-    def __init__(self,video_context=video_context,features=features,video_client=video_client):
+    def __init__(self,video_context,features,video_client):
         
         self.bucket=None #Bucket authenticated destination
         self.begin=None #Start Time
         self.end=None # End Time
         self.frame_rate=None #Frame Rate
-        self.orginal_path=None #Full video 
+        self.original_path=None #Full video
+        self.local_path=None #The clipped path variable
         self.gcs_path=None #Desired GCS path
 
     def ffmpeg(self):
-        self.local_path=ffmpeg_extract_subclip(self.original_path, self.begin, self.end, targetname=self.local_path)
+        ffmpeg_extract_subclip(self.original_path, self.begin, self.end, targetname=self.local_path)
     
     def upload(self):
     
         #Upload clip to google cloud
         #construct filename
-        splitname=os.path.split(clip)
+        splitname=os.path.split(self.local_path)
         filename=splitname[len(splitname)-1]
         blob = self.bucket.blob("VideoMeerkat" + "/" + filename.lower())
         

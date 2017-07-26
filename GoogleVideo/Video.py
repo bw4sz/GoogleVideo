@@ -1,24 +1,38 @@
 import cv2
 import sys
-from urlparse import urlparse
+import subprocess
 import math
 import os
 import numpy as np
-from Geometry import *
 import csv
 import time
 import Crop
 from operator import itemgetter
 from itertools import groupby
+from urlparse import urlparse
+from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
+from google.cloud import storage
+from Geometry import *
 
-def ClipLength(l):
+from google.cloud.gapic.videointelligence.v1beta1 import enums
+from google.cloud.gapic.videointelligence.v1beta1 import (
+    video_intelligence_service_client)
+from google.cloud.proto.videointelligence.v1beta1 import video_intelligence_pb2
+
+def ClipLength(l,frame_rate):
+    
+    #get first position of Motion
     indexes = [next(group) for key, group in groupby(enumerate(l), key=itemgetter(1))]
+    
+    #number of frames with Motion
     len_indexes = [len(list(group)) for key, group in groupby(l)]
     
     clip_range=[]
+    
+    #Create time ranges by dividing frame counts by frame rate
     for position,length in enumerate(len_indexes):
         if indexes[position][1] == True:
-            clip_range.append([indexes[position][0],indexes[position][0]+length])
+            clip_range.append([float(indexes[position][0])/frame_rate,float(indexes[position][0]+length)/frame_rate])
     return clip_range
     
 class Video:
@@ -40,8 +54,7 @@ class Video:
         ##Google Properties##
         #Google Credentials
         #credentials = GoogleCredentials.get_application_default()
-        if not credentials:
-            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args.google_account
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args.google_account
             
         #Google Cloud Storage
         storage_client = storage.Client()
@@ -82,11 +95,6 @@ class Video:
         #set frame frate
         self.frame_rate=round(self.cap.get(5))
         
-        #This seems to misinterpret just .tlv files
-        if extension in ['.tlv','.TLV']: 
-            self.frame_rate=1
-            print("File type is .tlv, setting frame rate to 1 fps")        
-
         #background subtraction
         self.background_instance=self.create_background() 
         
@@ -262,37 +270,56 @@ class Video:
         def __init__(self, rect):
             self.update_rect(rect)
             self.members = []    
-    def upload(self,clip):
+
+    def clip(self):
+        
+        #find beginning and end segments
+        #multiply frame number by frame rate to get timestamp        
+        clip_range=ClipLength(self.MotionHistory,self.frame_rate)
+        
+        #send to ffmpeg with names
+        self.clips_to_upload=[]
+        
+        for index,clip in enumerate(clip_range):
+            vname,ext=os.path.splitext(self.args.video)
+            #add clip number
+            newname=vname+"_"+str(index)+".avi"
+            ffmpeg_extract_subclip(self.args.video, clip[0], clip[1], targetname=newname)
+            self.clips_to_upload.append(newname)
+            
+    def upload(self):
         
         #Upload clip to google cloud
         #construct filename
-        splitname=os.path.split(clip)
-        filename=splitname[len(splitname)-1]
-        blob = self.bucket.blob(self.parsed.path[1:] + "/" + filename.lower())
+        self.clips_to_run=[]
         
-        if not blob.exists():
-            blob.upload_from_filename(filename=clip)                        
-            #upload to gcp                
-            print("Uploaded " + clip)
+        for clip in self.clips_to_upload:
+            splitname=os.path.split(clip)
+            filename=splitname[len(splitname)-1]
+            blob = self.bucket.blob("VideoMeerkat" + "/" + filename.lower())
+            
+            self.clips_to_run.append('gs://' + self.bucket.name + blob.name)
+            
+            if not blob.exists():
+                blob.upload_from_filename(filename=clip)                        
+                #upload to gcp                
+                print("Uploaded " + clip)
     
-    def label(path):
-        operation = self.video_client.annotate_video(path, self.features, video_context=self.video_context)
-        print('\nProcessing video for label annotations:')
-    
-        while not operation.done():
-            sys.stdout.write('.')
-            sys.stdout.flush()
-            time.sleep(10)
-    
-        print('\nFinished processing.')
-    
-        results = operation.result().annotation_results[0]
-        return results
-    def clip(self):
-        pass
-        #find beginning and end segments
-        clip_range=ClipLength(self.MotionHistory)
-        #send to ffmpeg with names
+    def label(self):
+        
+        for path in self.clips_to_run:
+            operation = self.video_client.annotate_video(path, self.features, video_context=self.video_context)
+            print('\nProcessing video for label annotations:')
+        
+            while not operation.done():
+                sys.stdout.write('.')
+                sys.stdout.flush()
+                time.sleep(8)
+        
+            print('\nFinished processing.')
+        
+            results = operation.result().annotation_results[0]
+            print results
     
     def write(self):      
         

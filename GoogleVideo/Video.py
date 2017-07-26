@@ -129,9 +129,9 @@ class Video:
             self.background_apply()
                                 
             #view the background
-            bg=self.fgbg.getBackgroundImage()
-            cv2.imshow("Background", bg)
-            cv2.waitKey(1)            
+            #bg=self.fgbg.getBackgroundImage()
+            #cv2.imshow("Background", bg)
+            #cv2.waitKey(1)            
             
             #skip the first frame after adding it to the background.
             if self.IS_FIRST_FRAME:
@@ -175,6 +175,10 @@ class Video:
                             
             self.annotations[self.frame_count] = remaining_bounding_box
             
+            #store frame history
+            print("Motion")
+            self.MotionHistory.append(True)
+            
             if self.args.show:
                 for bounding_box in remaining_bounding_box:
                     if self.args.draw: 
@@ -183,8 +187,6 @@ class Video:
                     cv2.waitKey(0)
         cv2.destroyAllWindows()            
         
-        #store frame history
-        self.MotionHistory.append(True)
         
     def read_frame(self):
         
@@ -277,13 +279,28 @@ class Video:
         #multiply frame number by frame rate to get timestamp        
         clip_range=ClipLength(self.MotionHistory,self.frame_rate)
         
+        #Clip rules
+        
+        #1) If two clips are within 10 seconds, combine.
+        revised_clips=[]
+        for index,clip in enumerate(clip_range):
+            if (clip_range[index][1] - clip_range[index+1][0]) < 10:
+                combined=clip_range[index] + clip_range[index+1]
+                revised_clips.append([min(combined),max(combined)])
+        
+        #2 If clip duration is less than 2 second, remove
+        revised_clips=[x[(x[1]-x[0] > 2)] for x in revised_clips]
+        
         #send to ffmpeg with names
         self.clips_to_upload=[]
         
-        for index,clip in enumerate(clip_range):
+        for index,clip in enumerate(revised_clips):
             vname,ext=os.path.splitext(self.args.video)
+            
             #add clip number
             newname=vname+"_"+str(index)+".avi"
+            
+            #extract clip
             ffmpeg_extract_subclip(self.args.video, clip[0], clip[1], targetname=newname)
             self.clips_to_upload.append(newname)
             
@@ -298,7 +315,7 @@ class Video:
             filename=splitname[len(splitname)-1]
             blob = self.bucket.blob("VideoMeerkat" + "/" + filename.lower())
             
-            self.clips_to_run.append('gs://' + self.bucket.name + blob.name)
+            self.clips_to_run.append('gs://' + self.bucket.name +"/"+ blob.name)
             
             if not blob.exists():
                 blob.upload_from_filename(filename=clip)                        
@@ -318,7 +335,7 @@ class Video:
         
             print('\nFinished processing.')
         
-            results = operation.result().annotation_results[0]
+            results = operation.result().annotation_results
             print results
     
     def write(self):      

@@ -55,9 +55,6 @@ class Video:
         
         #TODO check if bucket exists.
         self.bucket = storage_client.get_bucket(args.bucket)
-                
-        #Video clip annontations
-        self.clip_labels={}
         
         #create local output directory            
         normFP=os.path.normpath(self.args.input)
@@ -200,7 +197,8 @@ class Video:
         #Erode to remove noise, dilate the areas to merge bounded objects
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(15,15))
         self.image= cv2.morphologyEx(self.image, cv2.MORPH_OPEN, kernel)
-    def adapt(self):
+    
+    def adapt(self): #Adapt the MOG sensitivity based on performance
         
             #If current frame is a multiple of the 1000 frames
             if self.frame_count % 1000 == 0:                                  
@@ -297,7 +295,9 @@ class Video:
         VideoClips=[]
         for index,clip_info in enumerate(revised_clips):
             cl=VideoClip(video_context=self.video_context,features=self.features,video_client=self.video_client)
-            cl.orginal_path=self.args.video #video path on local machine
+            
+            cl.bucket=self.bucket
+            cl.original_path=self.args.video #video path on local machine
             cl.begin=clip_info[0] # Begin Time
             cl.end=clip_info[1] #End Time
             cl.frame_rate=self.frame_rate 
@@ -308,12 +308,12 @@ class Video:
             VideoClips.append(cl)
         
         #for each VideoClip, cut segment using FFMPEG, upload to GCS and annotate using cloud video intelligence
-        clip_labels=[]
+        self.clip_labels=[]
         for clip in VideoClips:
             clip.ffmpeg()
             clip.upload()
             clip.label()
-            clip_labels.append(clip.parse())
+            self.clip_labels.append(clip.parse())
     
     def write(self):      
         
@@ -352,7 +352,7 @@ class Video:
 
         #Write clip annotations
         self.output_annotations=self.file_destination + "/annotations.csv"
-        with open(self.clip_labels, 'w') as f:  
+        with open(self.output_annotations, 'w') as f:  
             writer = csv.writer(f)
             for line in self.clip_labels: 
                 writer.writerow(line)

@@ -1,8 +1,15 @@
+import sys
+import time
+import os
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 
 class VideoClip:
     
     def __init__(self,video_context,features,video_client):
+        
+        self.video_context=video_context
+        self.features=features
+        self.video_client=video_client
         
         self.bucket=None #Bucket authenticated destination
         self.begin=None #Start Time
@@ -32,7 +39,7 @@ class VideoClip:
     
     def label(self):
         
-        operation = video_client.annotate_video(self.gcs_path, features, video_context=video_context)
+        operation = self.video_client.annotate_video(self.gcs_path, self.features, video_context=self.video_context)
         print('\nProcessing video for label annotations:')
     
         while not operation.done():
@@ -42,9 +49,9 @@ class VideoClip:
     
         print('\nFinished processing.')
     
-        self.results = operation.result().annotation_results[0]
+        self.result = operation.result().annotation_results[0]
         
-        for i, label in enumerate(self.results.label_annotations):
+        for i, label in enumerate(self.result.label_annotations):
             print('Label description: {}'.format(label.description))
             print('Locations:')
     
@@ -65,7 +72,7 @@ class VideoClip:
         for label in self.result.label_annotations:
             for description in label.description:
                 for location in label.locations:
-                    self.parsed_labels.append(description, location.segment.start_time_offset,location.segment.end_time_offset,location.confidence)
+                    self.parsed_labels.append([self.original_path,self.local_path,description, location.segment.start_time_offset,location.segment.end_time_offset,location.confidence])
         return self.parsed_labels        
         
             

@@ -70,9 +70,13 @@ class VideoClip:
     def parse(self):
         self.parsed_labels=[]
         for label in self.result.label_annotations:
-            for description in label.description:
-                for location in label.locations:
-                    self.parsed_labels.append([self.original_path,self.local_path,description, location.segment.start_time_offset,location.segment.end_time_offset,location.confidence])
+            for location in label.locations:
+                self.parsed_labels.append([self.original_path,
+                                           self.local_path,
+                                           str(label.description), 
+                                           location.segment.start_time_offset,
+                                           location.segment.end_time_offset,
+                                           location.confidence])
         return self.parsed_labels        
         
             

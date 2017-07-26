@@ -15,8 +15,7 @@ from Geometry import *
 from VideoClip import VideoClip
 
 from google.cloud.gapic.videointelligence.v1beta1 import enums
-from google.cloud.gapic.videointelligence.v1beta1 import (
-    video_intelligence_service_client)
+from google.cloud.gapic.videointelligence.v1beta1 import (video_intelligence_service_client)
 from google.cloud.proto.videointelligence.v1beta1 import video_intelligence_pb2
 
     
@@ -154,7 +153,6 @@ class Video:
             self.annotations[self.frame_count] = remaining_bounding_box
             
             #store frame history
-            print("Motion")
             self.MotionHistory.append(True)
             
             if self.args.show:
@@ -319,7 +317,7 @@ class Video:
         
         #write parameter logs        
         self.output_args=self.file_destination + "/parameters.csv"
-        with open(self.output_args, 'w') as f:  
+        with open(self.output_args, 'wb') as f:  
             writer = csv.writer(f,)
             writer.writerows(self.args.__dict__.items())
             
@@ -342,7 +340,7 @@ class Video:
         
         #Write frame bounding boxes
         self.output_annotations=self.file_destination + "/bounding_boxes.csv"
-        with open(self.output_annotations, 'w') as f:  
+        with open(self.output_annotations, 'wb') as f:  
             writer = csv.writer(f)
             writer.writerow(["Frame","x","y","h","w"])
             for x in self.annotations.keys():   
@@ -352,10 +350,12 @@ class Video:
 
         #Write clip annotations
         self.output_annotations=self.file_destination + "/annotations.csv"
-        with open(self.output_annotations, 'w') as f:  
+        with open(self.output_annotations, 'wb') as f:  
             writer = csv.writer(f)
-            for line in self.clip_labels: 
-                writer.writerow(line)
+            writer.writerow(["Video","Clip","Label","Start_Clip_Time","End_Clip_Time","Confidence"])
+            for clip in self.clip_labels: 
+                for line in clip:
+                    writer.writerow(line)
                 
 
 ###Helper Functions#####

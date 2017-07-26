@@ -2,83 +2,24 @@ import cv2
 import sys
 from urlparse import urlparse
 import math
-from datetime import datetime, timedelta
 import os
 import numpy as np
 from Geometry import *
 import csv
 import time
 import Crop
+from operator import itemgetter
+from itertools import groupby
 
-#general functions
-def mult(p,x):
-    return(int(p+p*x))
-
-def check_bounds(img,axis,p):
-    if p > img.shape[axis]:
-        p=img.shape[axis]
-    if p < 0:
-        p=0
-    return(p)
-
-class FixedlenList(list):
-    '''
-subclass from list, providing all features list has
-the list size is fixed. overflow items will be discarded
-
-    '''
-    def __init__(self,l=0):
-        super(FixedlenList,self).__init__()
-        self.__length__=l #fixed length
-
-    def pop(self,index=-1):
-        super(FixedlenList, self).pop(index)
-
-    def remove(self,item):
-        self.__delitem__(item)
-
-    def __delitem__(self,item):
-        super(FixedlenList, self).__delitem__(item)
-        #self.__length__-=1	
-
-    def append(self,item):
-        if len(self) >= self.__length__:
-            super(FixedlenList, self).pop(0)
-        super(FixedlenList, self).append(item)		
-
-    def extend(self,aList):
-        super(FixedlenList, self).extend(aList)
-        self.__delslice__(0,len(self)-self.__length__)
-
-    def insert(self):
-        pass
-
-def resize_box(img,bbox,m=math.sqrt(2)-1):
-
-    #expand box by multiplier m, limit to image edge
-
-    #max height
-    p1=mult(bbox.y+bbox.h,-m)
-    p1=check_bounds(img, 0, p1)
-
-    #min height
-    p2=mult(bbox.y,m)            
-    p2=check_bounds(img, 0, p2)            
-
-    #min width
-    p3=mult(bbox.x,-m)            
-    p3=check_bounds(img, 1, p3)            
-
-    #max width
-    p4=mult(bbox.x+bbox.w,m)                        
-    p4=check_bounds(img, 1, p4)            
-
-    #create a mask, in case its bigger than image            
-    cropped_image=img[p1:p2,p3:p4]
-
-    #Resize Image
-    resized_image = cv2.resize(cropped_image, (299, 299))  
-    return(resized_image)
+def ClipLength(l):
+    indexes = [next(group) for key, group in groupby(enumerate(l), key=itemgetter(1))]
+    len_indexes = [len(list(group)) for key, group in groupby(l)]
+    
+    clip_range=[]
+    for position,length in enumerate(len_indexes):
+        if indexes[position][1] == True:
+            clip_range.append([indexes[position][0],indexes[position][0]+length])
+    return clip_range
     
 class Video:
     def __init__(self,vid,args):
@@ -154,12 +95,7 @@ class Video:
         
         #Motion History, boolean state of Motion
         self.MotionHistory=[]
-        
-        #Store Padding Frames, from before Motion Event to provide context
-        self.padding_frames=FixedlenList(l=args.frame_padding)
-        
-        self.motion_frames=[]
-        
+                
     def analyze(self):
          
         if self.args.show: 
@@ -193,14 +129,15 @@ class Video:
             if self.IS_FIRST_FRAME:
                 print("Skipping first frame")
                 self.IS_FIRST_FRAME=False
-                self.end_sequence(False)
+                self.MotionHistory.append(False)
+                continue
             
             #contour analysis
             self.countours=self.find_contour()
             
             #Next frame if no contours
             if len(self.contours) == 0 :
-                self.end_sequence(False)
+                self.MotionHistory.append(False)
                 continue
               
             #bounding boxes
@@ -208,7 +145,7 @@ class Video:
             
             #Next frame if no bounding boxes
             if len(bounding_boxes) == 0 :
-                self.end_sequence(False)
+                self.MotionHistory.append(False)
                 continue
 
             #minimum box size
@@ -225,15 +162,9 @@ class Video:
             
             #next frame is no remaining bounding boxes
             if len(remaining_bounding_box)==0:
-                self.end_sequence(False)
+                self.MotionHistory.append(False)
                 continue
                             
-            #Write bounding box time event, depends on proper frame rate
-            sec = timedelta(seconds=int(self.frame_count/float(self.frame_rate)))             
-            d = datetime(1,1,1) + sec                        
-            for box in remaining_bounding_box:
-                box.time = d
-
             self.annotations[self.frame_count] = remaining_bounding_box
             
             if self.args.show:
@@ -245,40 +176,8 @@ class Video:
         cv2.destroyAllWindows()            
         
         #store frame history
-        self.end_sequence(True)
-    
-    def write_clip(self):
+        self.MotionHistory.append(True)
         
-        #Get information about camera and image
-        width = np.size(self.original_image, 1)
-        height = np.size(self.original_image, 0)
-        frame_size=(width, height)                  
-    
-        #create videowriter with annotated file name
-        vidname=os.path.basename(self.path)
-        self.annotated_file= self.vidpath + "/annotated_" + vidname                
-        out = cv2.VideoWriter(self.annotated_file,cv2.VideoWriter_fourcc('X','V','I',"D"),float(fr),frame_size)                
-        for frame in self.padding_frames + self.motion_frames:
-            out.write()
-        #return path
-        return self.annotated_file
-        
-    def end_sequence(self,Motion):        #When frame hits the end of processing
-        #Capture Frame
-        if Motion:
-            self.motion_frames.append(self.original_image)
-        else:
-            self.padding_frames.append(self.original_image)
-        
-        #Write State
-        self.MotionHistory.append(Motion)
-        
-        #If Motion History is sufficient
-        if self.MotionHistory[-5:] == [True,True,True,False,False]:
-            path=self.write_clip()
-            self.upload(path)
-            self.clip_labels[path]=self.label(path)
-    
     def read_frame(self):
         
         #read frame
@@ -389,6 +288,11 @@ class Video:
     
         results = operation.result().annotation_results[0]
         return results
+    def clip(self):
+        pass
+        #find beginning and end segments
+        clip_range=ClipLength(self.MotionHistory)
+        #send to ffmpeg with names
     
     def write(self):      
         

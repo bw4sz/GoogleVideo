@@ -12,5 +12,5 @@ proj.directory-list = [{'dirloc': loc('.'),
                         'watch_for_changes': True}]
 proj.file-type = 'shared'
 proj.launch-config = {loc('GoogleVideo/MotionMeerkat.py'): ('project',
-        (u'--input C:/Users/Ben/Desktop/MeerkatTest/jantest.mp4  --mogvariance 30 --moglearning .25',
+        (u'--input C:/Users/Ben/Desktop/MeerkatTest/MoyTest.mpg',
          ''))}

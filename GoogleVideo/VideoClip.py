@@ -71,6 +71,11 @@ class VideoClip:
         self.parsed_labels=[]
         for label in self.result.label_annotations:
             for location in label.locations:
+                
+                #skip full video annotations
+                if location.segment.end_time_offset == -1:
+                    continue 
+                
                 self.parsed_labels.append([self.original_path,
                                            self.local_path,
                                            str(label.description), 

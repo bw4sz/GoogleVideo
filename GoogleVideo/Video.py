@@ -62,7 +62,8 @@ class Video:
         (_,IDFL) = os.path.split(filepath) 
     
         self.file_destination=os.path.join(self.args.output,IDFL)                
-        self.file_destination=os.path.join(self.file_destination,shortname)               
+        self.file_destination=os.path.join(self.file_destination,shortname)
+        print("Writing clips to " + self.file_destination)
 
         if not os.path.exists(self.file_destination):
             os.makedirs(self.file_destination)        
@@ -154,7 +155,7 @@ class Video:
             
             if self.args.show:
                 for bounding_box in remaining_bounding_box:
-                    if self.args.draw: 
+                    if self.args.draw_box: 
                         cv2.rectangle(self.original_image, (bounding_box.x, bounding_box.y), (bounding_box.x+bounding_box.w, bounding_box.y+bounding_box.h), (0,0,255), 2)
                     cv2.imshow("Motion_Event", self.original_image)
                     cv2.waitKey(0)
@@ -267,12 +268,18 @@ class Video:
         
         ##Clip rules##
         
-        #1) If two consecutive clips are within 10 seconds, combine.
-        rule1=[]
-        for index,clip in enumerate(clip_range[:-1]):
-            if (clip_range[index][1] - clip_range[index+1][0]) < 10:
-                combined=clip_range[index] + clip_range[index+1]
-                rule1.append([min(combined),max(combined)])
+        #1) If two consecutive clips are within 20 seconds, combine.
+        
+        n=20
+
+        #perform iteratively until no more concatanations
+        flat_list = [item for sublist in clip_range for item in sublist]
+        b = [abs(i - j) > n for i, j in zip(flat_list[:-1], flat_list[1:])]
+        m = [i + 1 for i, j in enumerate(b) if j is True]
+        m = [0] + m + [len(flat_list)]
+        new_groups = [flat_list[i: j] for i, j in zip(m[:-1], m[1:])]
+        
+        rule1=[[min(x),max(x)] for x in new_groups]
         
         #2 If clip duration is less than 2 second, remove
         rule2=[]

@@ -357,7 +357,7 @@ class Video:
         self.output_annotations=self.file_destination + "/annotations.csv"
         with open(self.output_annotations, 'wb') as f:  
             writer = csv.writer(f)
-            writer.writerow(["Video","Clip","Label","Start_Clip_Time","End_Clip_Time","Start_Video_Time","End_Video_Time","Confidence"])
+            writer.writerow(["Video","Clip","Label","Clip_Minute","Video_Minute","Confidence"])
             for clip in self.clip_labels: 
                 for line in clip:
                     writer.writerow(line)

@@ -76,13 +76,12 @@ class VideoClip:
                 if location.segment.end_time_offset == -1:
                     continue 
                 
+                #pass lables, convert time to minutes
                 self.parsed_labels.append([self.original_path,
                                            self.local_path,
                                            str(label.description), 
-                                           location.segment.start_time_offset/1000000.0,
-                                           location.segment.end_time_offset/1000000.0,
-                                           location.segment.start_time_offset/1000000.0+self.begin,
-                                           location.segment.start_time_offset/1000000.0+self.begin,
+                                           location.segment.start_time_offset/1000000.0/60,
+                                           location.segment.start_time_offset/1000000.0/60+self.begin/60,
                                            location.confidence])
         return self.parsed_labels        
         
